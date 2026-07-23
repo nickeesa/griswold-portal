@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "reports_bdtmsds",
+  "info": {
+    "singularName": "report-bdtmsd",
+    "pluralName": "report-bdtmsds",
+    "displayName": "Reports BDTMSD",
+    "description": "Audit reports produced by BDT&MSD. Linked many-to-many to properties."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "properties": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::property.property",
+      "mappedBy": "reports_bdtmsds",
+      "private": true
+    },
+    "type": {
+      "type": "string"
+    },
+    "performance_score": {
+      "type": "decimal"
+    },
+    "download": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "files",
+        "images"
+      ]
+    },
+    "full_report": {
+      "type": "string"
+    },
+    "date": {
+      "type": "date"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "reports_ghs",
+  "info": {
+    "singularName": "report-gh",
+    "pluralName": "report-ghs",
+    "displayName": "Reports GH",
+    "description": "Audit reports produced by Griswold Hospitality. Same shape as Reports BDTMSD plus a separate spa_score."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "properties": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::property.property",
+      "mappedBy": "reports_ghs",
+      "private": true
+    },
+    "type": {
+      "type": "string"
+    },
+    "performance_score": {
+      "type": "decimal"
+    },
+    "spa_score": {
+      "type": "decimal"
+    },
+    "download": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "files",
+        "images"
+      ]
+    },
+    "full_report": {
+      "type": "string"
+    },
+    "date": {
+      "type": "date"
+    }
+  }
+}

@@ -1,0 +1,208 @@
+name: CI
+
+# Assumes this whole package (frontend/ + tests/ + strapi/) lives in one repo.
+# If the frontend is split into its own repo, move the `frontend` job there and
+# keep the `access-control` job wherever the tests/ directory lives.
+
+on:
+  push:
+    branches: [main, production]
+  pull_request:
+
+jobs:
+  frontend:
+    name: Frontend — typecheck & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - name: Build
+        run: npm run build
+        env:
+          # Build does not call Strapi; harmless placeholders keep config happy.
+          STRAPI_URL: https://example.invalid
+          SESSION_COOKIE_NAME: gh_token
+      - name: F10 download-proxy unit tests
+        run: node --test ../tests/download-proxy/*.test.mjs
+        working-directory: frontend
+
+  access-control:
+    name: Access-control suite (release blocker)
+    runs-on: ubuntu-latest
+    # Skip on Dependabot PRs: Dependabot-triggered runs use a separate secret
+    # store and can't read Actions secrets, so GRISWOLD_STRAPI_DEPLOY_KEY is empty
+    # and the backend clone below can't run. The gate still runs on every regular
+    # PR and on each push to main/production, which validates dependency bumps
+    # post-merge (the frontend typecheck+build still runs on Dependabot PRs).
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    # SELF-CONTAINED: this job spins up and seeds its OWN Strapi (the companion
+    # griswold-strapi backend) on sqlite in development mode, then runs the
+    # dependency-free suite against it on localhost. It does NOT depend on any
+    # external instance or its seed data, so the gate is reliable on every PR and
+    # push — a release blocker that can't run isn't a gate.
+    #
+    # Requires a read-only DEPLOY KEY for nickeesa/griswold-strapi, stored as
+    # secrets.GRISWOLD_STRAPI_DEPLOY_KEY (private half; the public half is a
+    # read-only deploy key on the backend repo). The backend is cloned at the
+    # SAME branch name as this run when it exists (so a coordinated cross-repo
+    # change is tested together), else the default branch. The old AC_* instance
+    # secrets are no longer used.
+    steps:
+      - name: Checkout portal (test suite)
+        uses: actions/checkout@v7
+
+      - name: Clone griswold-strapi backend (matching branch, else default)
+        env:
+          DEPLOY_KEY: ${{ secrets.GRISWOLD_STRAPI_DEPLOY_KEY }}
+          REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          if [ -z "$DEPLOY_KEY" ]; then
+            echo "::error::GRISWOLD_STRAPI_DEPLOY_KEY secret is not set. Add the private half of a read-only deploy key for nickeesa/griswold-strapi so CI can spin up the backend."
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          URL="git@github.com:nickeesa/griswold-strapi.git"
+          git clone --depth 1 --branch "$REF" "$URL" backend 2>/dev/null \
+            || { rm -rf backend; git clone --depth 1 "$URL" backend; }
+          echo "backend on branch: $(git -C backend rev-parse --abbrev-ref HEAD)"
+
+      # C-DUAL overlay: companion griswold-strapi supplies the runnable Strapi
+      # shell (package.json, lockfile, admin). THIS repo's strapi/ kit is the
+      # source of truth for schemas, scoped controllers, routes, services,
+      # plugins.js, the seed script, and the kit boot guard src/index.js (the
+      # secret-placeholder refusal + client-role audit — the production DB guards
+      # are companion-owned, in the companion's own src/index.ts register()).
+      # Copy them over the clone — AFTER deleting shadowing .ts twins below — so
+      # the release-blocker suite always exercises the kit under review; green CI
+      # cannot coexist with kit/companion drift on those files.
+      - name: Overlay this repo's strapi kit onto the cloned backend
+        run: |
+          test -d strapi/src && test -d strapi/config
+          mkdir -p backend/src backend/config backend/scripts
+          # The companion is a TypeScript project. For every file the kit ships as
+          # `.js`, first delete any same-basename companion `.ts` twin: otherwise
+          # `tsc` compiles the twin to the same dist target as our `.js` (exit 0, no
+          # TS5056) and silently DISCARDS the overlaid kit file — e.g. the companion's
+          # src/index.ts shadowing our src/index.js, or config/plugins.ts shadowing
+          # config/plugins.js. Removing the twin guarantees the kit file is the one
+          # that compiles and runs, so the gate actually exercises the kit under review.
+          find strapi/src strapi/config -name '*.js' | while read -r kitjs; do
+            rel="${kitjs#strapi/}"
+            twin="backend/${rel%.js}.ts"
+            if [ -f "$twin" ]; then echo "removing shadowing companion twin: $twin"; rm -f "$twin"; fi
+          done
+          cp -a strapi/src/. backend/src/
+          cp -a strapi/config/. backend/config/
+          # Prefer kit seed + helpers when present (companion may already have scripts/).
+          if [ -d strapi/scripts ]; then cp -a strapi/scripts/. backend/scripts/; fi
+          # Guard: fail loudly if any companion .ts twin still shadows an overlaid kit .js.
+          shadow="$(find strapi/src strapi/config -name '*.js' | while read -r kitjs; do rel="${kitjs#strapi/}"; twin="backend/${rel%.js}.ts"; if [ -f "$twin" ]; then echo "$twin"; fi; done)"
+          if [ -n "$shadow" ]; then echo "::error::companion .ts twin(s) still shadow kit .js: $shadow"; exit 1; fi
+          echo "Overlay complete. Controllers present:"
+          ls backend/src/api/property/controllers/property.js \
+             backend/src/api/report-bdtmsd/controllers/report-bdtmsd.js \
+             backend/src/api/report-gh/controllers/report-gh.js \
+             backend/src/api/location/controllers/location.js
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Install & configure backend (sqlite, dev secrets)
+        working-directory: backend
+        run: |
+          npm ci
+          {
+            echo "HOST=127.0.0.1"
+            echo "PORT=1337"
+            echo "APP_KEYS=$(openssl rand -hex 16),$(openssl rand -hex 16)"
+            echo "API_TOKEN_SALT=$(openssl rand -hex 16)"
+            echo "ADMIN_JWT_SECRET=$(openssl rand -hex 16)"
+            echo "TRANSFER_TOKEN_SALT=$(openssl rand -hex 16)"
+            echo "JWT_SECRET=$(openssl rand -hex 16)"
+            echo "ENCRYPTION_KEY=$(openssl rand -hex 16)"
+            # development => prod guards off and the auth rate-limit disabled so
+            # the suite's rapid logins don't hit a 429.
+            echo "NODE_ENV=development"
+            echo "DATABASE_CLIENT=sqlite"
+            echo "DATABASE_FILENAME=.tmp/data.db"
+          } > .env
+
+      - name: Create client role + seed fixtures
+        working-directory: backend
+        env:
+          SEED_USER_A_PASSWORD: ci-client-a-Pw1!
+          SEED_USER_B_PASSWORD: ci-client-b-Pw1!
+        run: |
+          # The seed requires the `client` role to pre-exist; create it + grant
+          # the read actions (mirrors docs/05 §1 / src/index bootstrap).
+          cat > ci-create-role.cjs <<'SCRIPT'
+          const { createStrapi, compileStrapi } = require('@strapi/strapi');
+          const UIDS = ['api::property.property','api::report-bdtmsd.report-bdtmsd','api::report-gh.report-gh','api::location.location'];
+          (async () => {
+            const app = await createStrapi(await compileStrapi()).load();
+            app.log.level = 'error';
+            try {
+              let role = await app.db.query('plugin::users-permissions.role').findOne({ where: { type: 'client' } });
+              if (!role) role = await app.db.query('plugin::users-permissions.role').create({ data: { name: 'Client', description: 'Portal client', type: 'client' } });
+              const have = new Set((await app.db.query('plugin::users-permissions.permission').findMany({ where: { role: role.id } })).map((p) => p.action));
+              for (const uid of UIDS) for (const a of ['find','findOne']) {
+                const action = uid + '.' + a;
+                if (!have.has(action)) await app.db.query('plugin::users-permissions.permission').create({ data: { action, role: role.id } });
+              }
+            } finally { await app.destroy(); }
+          })().catch((e) => { console.error(e); process.exit(1); });
+          SCRIPT
+          node ci-create-role.cjs
+          node ./scripts/seed.js | tee seed-out.txt
+          # Export the generated ids the suite needs.
+          echo "UNOWNED_PROPERTY_ID=$(grep -oE 'UNOWNED_PROPERTY_ID=[A-Za-z0-9]+' seed-out.txt | head -1 | cut -d= -f2)" >> "$GITHUB_ENV"
+          echo "DRAFT_PROPERTY_ID=$(grep -oE 'DRAFT_PROPERTY_ID=[A-Za-z0-9]+' seed-out.txt | head -1 | cut -d= -f2)" >> "$GITHUB_ENV"
+
+      - name: Start Strapi + run access-control suite
+        env:
+          STRAPI_URL: http://localhost:1337
+          USER_A_IDENTIFIER: seed_clienta
+          USER_A_PASSWORD: ci-client-a-Pw1!
+          USER_B_IDENTIFIER: seed_clientb
+          USER_B_PASSWORD: ci-client-b-Pw1!
+          # UNOWNED_PROPERTY_ID and DRAFT_PROPERTY_ID come from the seed step
+          # via $GITHUB_ENV.
+        run: |
+          # Start Strapi in the background IN THIS STEP and run the suite here too:
+          # a server started in a SEPARATE step is killed before the next step runs.
+          cd backend
+          npm run develop > strapi.log 2>&1 &
+          cd "$GITHUB_WORKSPACE"
+          up=0
+          for i in $(seq 1 150); do
+            # curl prints "000" itself on connection-refused, so DON'T add another
+            # `|| echo 000` (that yields "000000" and falsely reads as "up").
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1337/api/properties 2>/dev/null || true)
+            if [ -n "$code" ] && [ "$code" != "000" ]; then echo "Strapi up (HTTP $code) after ~$((i*2))s"; up=1; break; fi
+            sleep 2
+          done
+          if [ "$up" != "1" ]; then echo "::error::Strapi did not come up"; tail -80 backend/strapi.log; exit 1; fi
+          cd tests/access-control && node --test --test-concurrency=1
+          # AC-4 (blocked kill-switch) remains MANUAL — it needs an admin toggle
+          # mid-run and cannot be flipped safely from the client role. It is a
+          # RELEASE BLOCKER: record evidence per docs/08-Go-Live-Checklist.md
+          # before every production deploy (RUN_AC4=1 against a throwaway user).
+
+      - name: Strapi log on failure
+        if: failure()
+        run: tail -120 backend/strapi.log || true

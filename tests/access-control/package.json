@@ -1,0 +1,13 @@
+{
+  "name": "gh-portal-access-control-tests",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone access-control test suite for the Griswold Hospitality client portal Strapi 5 backend. Dependency-free; uses node:test and global fetch.",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "test": "node --test --test-concurrency=1"
+  }
+}

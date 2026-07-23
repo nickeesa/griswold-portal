@@ -1,0 +1,81 @@
+{
+  "kind": "collectionType",
+  "collectionName": "properties",
+  "info": {
+    "singularName": "property",
+    "pluralName": "properties",
+    "displayName": "Property",
+    "description": "A hotel property. The central content type; reports, performance content, and user access all hang off this."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "property_type": {
+      "type": "enumeration",
+      "enum": [
+        "resort",
+        "city_hotel",
+        "boutique",
+        "spa_resort",
+        "residence",
+        "other"
+      ],
+      "default": "other"
+    },
+    "image": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "location": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::location.location",
+      "inversedBy": "properties"
+    },
+    "reports_bdtmsds": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::report-bdtmsd.report-bdtmsd",
+      "inversedBy": "properties"
+    },
+    "reports_ghs": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::report-gh.report-gh",
+      "inversedBy": "properties"
+    },
+    "users": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "properties",
+      "private": true
+    },
+    "hotel_performance": {
+      "type": "text"
+    },
+    "spa_performance": {
+      "type": "text"
+    },
+    "fb_performance": {
+      "type": "text"
+    },
+    "property_info": {
+      "type": "text"
+    },
+    "order": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

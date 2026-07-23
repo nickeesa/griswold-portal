@@ -1,0 +1,32 @@
+# Handoff package: frontend/ (Next.js) + strapi/ (drop-in src+config) + tests/ + docs/.
+# Each subproject may also carry its own .gitignore (e.g. frontend/.gitignore);
+# this root file is a safety net across all of them.
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# Environment / secrets — NEVER COMMIT
+.env
+.env.*
+!.env.example
+
+# Next.js generated types
+next-env.d.ts
+
+# TypeScript incremental
+*.tsbuildinfo

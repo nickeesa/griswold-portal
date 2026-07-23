@@ -1,0 +1,16 @@
+# Companion Strapi version pin for this drop-in kit.
+#
+# This directory is NOT a runnable Strapi app (no package.json). Assemble into a
+# real Strapi project — preferably create-strapi-app@5.37.0 — or use the
+# companion griswold-strapi repo, then overlay/copy strapi/src + strapi/config.
+#
+# Required floor: Strapi >= 5.37.0 (docs/03-Technical-Spec.md §2.1).
+# Recommended pin for reproducible access-control green: 5.37.0
+#
+# Note: newer minors (e.g. 5.50.x) hard-reject the legacy v4 query key
+# `publicationState`. AC-24 is version-tolerant (200 OR safe 4xx), but pinning
+# 5.37.0 keeps local/CI behavior aligned with the reviewed companion.
+#
+# STRAPI_VERSION=5.37.0
+STRAPI_MIN=5.37.0
+STRAPI_PIN=5.37.0
