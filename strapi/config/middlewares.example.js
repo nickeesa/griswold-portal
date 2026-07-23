@@ -15,8 +15,7 @@
  *
  * To use:
  *   1. Open your project's existing config/middlewares.js.
- *   2. Copy the PROD_ORIGIN / VERCEL_PROJECT / VERCEL_PREVIEW_RE constants
- *      below to the top of that file.
+ *   2. Copy the PROD_ORIGIN constant below to the top of that file.
  *   3. Replace the project's existing `'strapi::cors'` entry (often a bare
  *      string) with the configured `{ name: 'strapi::cors', config: {...} }`
  *      object below — keeping the rest of the project's array order intact.
@@ -28,14 +27,8 @@
  * ============================================================================
  */
 
-const PROD_ORIGIN = 'https://client.griswoldhospitality.com';
-
-// Vercel project slug for this portal's frontend. Preview URLs look like
-// `<slug>-<hash>-<team>.vercel.app` or `<slug>-git-<branch>-<team>.vercel.app`.
-// Scoping the regex to this slug means we allow ONLY this project's previews,
-// not every tenant on *.vercel.app. CONFIRM the exact slug in Vercel first.
-const VERCEL_PROJECT = 'griswold-portal';
-const VERCEL_PREVIEW_RE = new RegExp(`^https://${VERCEL_PROJECT}-[a-z0-9-]+\\.vercel\\.app$`);
+// Keep in sync with companion griswold-strapi/config/middlewares.ts.
+const PROD_ORIGIN = 'https://griswold-portal-nine.vercel.app';
 
 module.exports = [
   'strapi::logger',
@@ -51,15 +44,13 @@ module.exports = [
       origin: (ctx) => {
         // localhost is only a valid origin in dev/test — never accept it as a
         // credentialed cross-origin caller against the production API.
+        // Preview CORS removed: Production-only portal deploys.
         const allowed =
           process.env.NODE_ENV === 'production'
             ? [PROD_ORIGIN]
             : [PROD_ORIGIN, 'http://localhost:3000'];
         const reqOrigin = ctx.request.header.origin;
         if (reqOrigin && allowed.includes(reqOrigin)) return reqOrigin;
-        // Allow Vercel preview deployments for THIS project only (a bare
-        // `*.vercel.app` pattern would trust any Vercel customer's app):
-        if (reqOrigin && VERCEL_PREVIEW_RE.test(reqOrigin)) return reqOrigin;
         // Disallowed: return a safe default (never reflect an untrusted origin).
         return PROD_ORIGIN;
       },
