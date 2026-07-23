@@ -24,6 +24,26 @@ dist/
 .env
 .env.*
 !.env.example
+*.pem
+*.p12
+*.pfx
+*.key
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.keystore
+credentials.json
+service-account*.json
+
+# Strapi / sqlite local runtime (kit overlay / local hop)
+.tmp/
+.strapi/
+.strapi-updater.json
+*.db
+*.sqlite
+*.sqlite3
+exports/
 
 # Next.js generated types
 next-env.d.ts
