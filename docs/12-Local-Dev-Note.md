@@ -46,3 +46,6 @@ Cloud companion `PROD_ORIGIN` is the Vercel Production alias. Localhost is allow
 ## CI
 
 Portal Actions clones companion via deploy key `GRISWOLD_STRAPI_DEPLOY_KEY`. Required checks on `main`: **Frontend — typecheck & build**, **Access-control suite (release blocker)**.
+
+<!-- phase4 preview-disable proof PR -->
+
