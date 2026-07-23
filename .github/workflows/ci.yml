@@ -18,7 +18,7 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
@@ -118,7 +118,7 @@ jobs:
              backend/src/api/report-gh/controllers/report-gh.js \
              backend/src/api/location/controllers/location.js
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
 
