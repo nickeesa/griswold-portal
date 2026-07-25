@@ -3,15 +3,22 @@ import { cn } from '@/lib/utils';
 import type { PropertyCardData } from '@/lib/types';
 
 function formatScore(score: number | null): string {
-  return score == null ? '—' : score.toFixed(2);
+  return score == null ? '—' : score.toFixed(2)+'%';
 }
+
+const SHORT_MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
 
 function formatDate(date: string | null): string {
   if (!date) return '—';
   // Parse from the ISO string parts to avoid time-zone drift on display.
   const [y, m, d] = date.slice(0, 10).split('-');
   if (!y || !m || !d) return date;
-  return `${m}/${d}/${y}`;
+  const month = SHORT_MONTHS[Number(m) - 1];
+  if (!month) return date;
+  return `${month} ${y}`;
 }
 
 // A single property card (FR-3.2). `featured` gives the first card a wider
@@ -54,7 +61,7 @@ export default function PropertyCard({
             {card.name}
           </h2>
           <p className={cn('mt-1 text-gray-200', featured ? 'text-base' : 'text-sm')}>
-            {card.location ?? 'Location not set'}
+            {card.location ?? ''}
           </p>
           <p className={cn('mt-2 text-gray-300', featured ? 'text-sm' : 'text-xs')}>
             Latest score {formatScore(card.latestScore)} · {formatDate(card.latestDate)}
