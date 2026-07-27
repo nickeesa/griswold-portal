@@ -60,6 +60,23 @@ describe('F10 download proxy helpers', () => {
     );
   });
 
+  test('SSRF: Strapi Cloud media subdomain is trusted; unrelated subdomain is not', () => {
+    assert.equal(
+      resolveStrapiMediaUrl(
+        'https://mighty-triumph-511acae1a4.media.strapiapp.com/report.pdf',
+        'https://mighty-triumph-511acae1a4.strapiapp.com',
+      ),
+      'https://mighty-triumph-511acae1a4.media.strapiapp.com/report.pdf',
+    );
+    assert.equal(
+      resolveStrapiMediaUrl(
+        'https://ingenious-garden-47d92e8858.media.strapiapp.com/old.pdf',
+        'https://mighty-triumph-511acae1a4.strapiapp.com',
+      ),
+      null,
+    );
+  });
+
   test('filename sanitization strips quotes/control; preserves extension', () => {
     assert.equal(sanitizeDownloadBasename('Q4 "Audit"'), 'Q4 _Audit_');
     assert.equal(extensionFromFileUrl('/uploads/x.PNG?v=1'), '.PNG');
