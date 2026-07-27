@@ -13,6 +13,7 @@ export type StrapiReport = {
   documentId: string;
   type?: string | null;
   date?: string | null;
+  publishedAt?: string | null;
   performance_score?: number | null;
   spa_score?: number | null; // GH only
   full_report?: string | null;
@@ -55,6 +56,7 @@ export type ReportRow = {
   source: 'BDTMSD' | 'GH';
   type: string | null;
   date: string | null; // ISO date
+  publishedAt: string | null;
   performanceScore: number | null;
   spaScore: number | null; // GH only
   downloadHref: string | null; // proxy route, not the raw Strapi URL

@@ -5,19 +5,34 @@ import { Search } from 'lucide-react';
 import { distinctYears } from '@/lib/reports';
 import { scoreColor } from '@/lib/score';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import EmptyState from './EmptyState';
 import type { ReportRow } from '@/lib/types';
 
+const SHORT_MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
 function fmtScore(n: number | null) {
   return n == null || !Number.isFinite(n) ? '—' : n.toFixed(2);
 }
+function fmtScorePct(n: number | null) {
+  const s = fmtScore(n);
+  return s === '—' ? s : `${s}%`;
+}
 function fmtDate(date: string | null) {
   if (!date) return '—';
-  const [y, m, d] = date.slice(0, 10).split('-');
-  return y && m && d ? `${m}/${d}/${y}` : date;
+  const [y, m] = date.slice(0, 10).split('-');
+  const month = SHORT_MONTHS[Number(m) - 1];
+  return y && month ? `${month} ${y}` : date;
+}
+function fmtQuarter(date: string | null) {
+  if (!date) return '—';
+  const [y, m] = date.slice(0, 10).split('-');
+  const quarter = Math.floor((Number(m) - 1) / 3) + 1;
+  return y && m ? `Q${quarter}-${y}` : date;
 }
 
 // Reports tab (FR-4.3/4.4/4.6). Receives the already-scoped, merged rows and
@@ -94,9 +109,8 @@ export default function ReportsTab({ rows }: { rows: ReportRow[] }) {
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{r.source}</Badge>
                   <h3 className="truncate text-lg font-medium text-foreground">
-                    {r.type ?? 'Report'}
+                    {fmtQuarter(r.date)} {r.type ?? 'Report'}
                   </h3>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">{fmtDate(r.date)}</p>
@@ -109,7 +123,7 @@ export default function ReportsTab({ rows }: { rows: ReportRow[] }) {
                     className="text-2xl font-bold"
                     style={{ color: scoreColor(r.performanceScore) }}
                   >
-                    {fmtScore(r.performanceScore)}
+                    {fmtScorePct(r.performanceScore)}
                   </p>
                   {/* GH rows show spa score; BDTMSD rows do not (AC-14). */}
                   {r.source === 'GH' ? (
