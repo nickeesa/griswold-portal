@@ -13,6 +13,7 @@ export function toRows(
     source,
     type: r.type ?? null,
     date: r.date ?? null,
+    publishedAt: r.publishedAt ?? null,
     performanceScore: r.performance_score ?? null,
     spaScore: source === 'GH' ? (r.spa_score ?? null) : null,
     downloadHref: r.download
@@ -24,7 +25,12 @@ export function toRows(
   return [
     ...bdtmsd.map((r) => map(r, 'BDTMSD')),
     ...gh.map((r) => map(r, 'GH')),
-  ].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')); // newest first
+  ].sort((a, b) => {
+    // newest first; tie-break on publishedAt (most recently published first)
+    const byDate = (b.date ?? '').localeCompare(a.date ?? '');
+    if (byDate !== 0) return byDate;
+    return (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '');
+  });
 }
 
 // Distinct years for the year filter. Parse the year straight from the ISO date
