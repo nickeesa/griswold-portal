@@ -38,10 +38,20 @@ export function mapOwnershipStatus(status) {
  */
 export function resolveStrapiMediaUrl(fileUrl, strapiBaseUrl) {
   const strapiOrigin = new URL(strapiBaseUrl).origin;
+  const strapiHost = new URL(strapiBaseUrl).host;
+  // Strapi Cloud serves uploaded media from a sibling `<project>.media.strapiapp.com`
+  // subdomain, distinct from the API's `<project>.strapiapp.com` host. Only trust
+  // that exact sibling subdomain — never a wildcard — to keep the SSRF guard tight.
+  const mediaHost = strapiHost.endsWith('.strapiapp.com')
+    ? strapiHost.replace(/\.strapiapp\.com$/, '.media.strapiapp.com')
+    : null;
+
   if (fileUrl.startsWith('http')) {
     try {
-      if (new URL(fileUrl).origin !== strapiOrigin) return null;
-      return fileUrl;
+      const parsed = new URL(fileUrl);
+      if (parsed.origin === strapiOrigin) return fileUrl;
+      if (mediaHost && parsed.host === mediaHost) return fileUrl;
+      return null;
     } catch {
       return null;
     }
