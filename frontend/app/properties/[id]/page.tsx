@@ -86,6 +86,7 @@ export default async function PropertyDetail({
         <TabBar
           key={property.documentId}
           rows={rows}
+          propertyPerformance={property.property_performance ?? null}
           hotelPerformance={property.hotel_performance ?? null}
           fbPerformance={property.fb_performance ?? null}
           spaPerformance={property.spa_performance ?? null}

@@ -30,6 +30,7 @@ export type StrapiProperty = {
   name: string;
   order?: number | null;
   property_info?: string | null;
+  property_performance?: string | null;
   hotel_performance?: string | null;
   fb_performance?: string | null;
   spa_performance?: string | null;
