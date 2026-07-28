@@ -13,21 +13,24 @@ import ReportsTab from './ReportsTab';
 import PerformanceTab from './PerformanceTab';
 import type { ReportRow } from '@/lib/types';
 
-type TabKey = 'reports' | 'hotel' | 'fb' | 'spa';
+type TabKey = 'reports' | 'property' | 'hotel' | 'fb' | 'spa';
 
-// Four-tab property detail surface (FR-4.2). Reports are pre-mapped to view rows
+// Five-tab property detail surface (FR-4.2): Reports, Property Performance, Hotel
+// Performance, F&B Performance, Spa Performance. Reports are pre-mapped to view rows
 // on the SERVER (see the RSC page) so the raw Strapi media URL never enters the
 // client payload — only the proxy `downloadHref` does. Merging/filtering happen
 // in the browser against those rows (no extra API calls). Performance tabs are
 // shown only when their field has content (FR-4.3).
 export default function TabBar({
   rows,
+  propertyPerformance,
   hotelPerformance,
   fbPerformance,
   spaPerformance,
   propertyInfoHref,
 }: {
   rows: ReportRow[];
+  propertyPerformance: string | null;
   hotelPerformance: string | null;
   fbPerformance: string | null;
   spaPerformance: string | null;
@@ -35,6 +38,9 @@ export default function TabBar({
 }) {
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'reports', label: 'Reports' },
+    ...(propertyPerformance?.trim()
+      ? [{ key: 'property' as const, label: 'Property Performance' }]
+      : []),
     ...(hotelPerformance?.trim() ? [{ key: 'hotel' as const, label: 'Hotel Performance' }] : []),
     ...(fbPerformance?.trim() ? [{ key: 'fb' as const, label: 'F&B Performance' }] : []),
     ...(spaPerformance?.trim() ? [{ key: 'spa' as const, label: 'Spa Performance' }] : []),
@@ -118,6 +124,9 @@ export default function TabBar({
         className="pt-6"
       >
         {active === 'reports' && <ReportsTab rows={rows} />}
+        {active === 'property' && (
+          <PerformanceTab content={propertyPerformance} label="Property Performance" />
+        )}
         {active === 'hotel' && (
           <PerformanceTab content={hotelPerformance} label="Hotel Performance" />
         )}
